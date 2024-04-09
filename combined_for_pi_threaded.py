@@ -75,11 +75,16 @@ def onServoPositionChange(self, position):
     dict.update("servo_pos", str(position))
 
 def onTouchSensorChange(self, sensorValue, sensorUnit, state):
-    printr('touch_sensor')
-    # print(f'touch_sensor: {sensorValue}')
-    dict.update("touch_sensor", str(sensorValue))
-    if userReady():
-        if sensorValue>0:
+    if sensorValue>0:
+        # curr = time.time()
+        # print(curr- state["touch_prev_time"])
+        # if state["touch_prev_time"] == 0 or (curr - state["touch_prev_time"] > 5):
+        #     state["touch_prev_time"] = curr
+        #     print('delay btn presses')
+        if userReady():
+            # print(f'touch_sensor: {sensorValue}')
+            dict.update("touch_sensor", str(sensorValue))
+            printr('touch_sensor')
             togglePomodoro(state)
 
 def onLightSensorChange(self, sensorValue, sensorUnit, state):
@@ -157,7 +162,7 @@ def printr(key):
         friend_rfid = dict.get("friend_rfid")
         posture_l = dict.get("posture_l")
         posture_r = dict.get("posture_r")
-        print(f'"touch_sensor"{touch_sensor}\t"light_seated"{light_seated}\t"phone_rfid"{phone_rfid}\t"friend_rfid"{friend_rfid}\t"posture_l"{posture_l} \t"posture_r"{posture_r}')
+        print(f'{time.time()}\t"touch_sensor"{touch_sensor}\t"light_seated"{light_seated}\t"phone_rfid"{phone_rfid}\t"friend_rfid"{friend_rfid}\t"posture_l"{posture_l} \t"posture_r"{posture_r}')
 
 # Update the LCD with a new message (reflects user's time settings or countdown of current time block)
 def write_lcd(lcd, message, detail):
@@ -379,6 +384,7 @@ def main():
         "work_timer": work_timer,
 
         "light_trigger" : 100,
+        "touch_prev_time"   : 0,
         "posture_l" : False,    #   not currently used, already in dict
         "posture_r" : False,    #   not currently used, already in dict
         "gyro_prev_l" : 0,
@@ -405,7 +411,7 @@ def main():
     dict.set("posture_r", "False")
 
 
-    	# Setup timers for work, short break, and long break with initial times
+    # Setup timers for work, short break, and long break with initial times
     lbreak_timer.setIsRemote(1)
     sbreak_timer.setIsRemote(1)
     work_timer.setIsRemote(1)
