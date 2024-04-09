@@ -353,6 +353,8 @@ def main():
     lcd.setBacklight(1)
     # Display "Pomodoro Timer" and "Ready" for 3 seconds  
     write_lcd(lcd, "Pomodoro Timer", "Ready")
+    # time.sleep(1)  # Wait for 3 seconds
+
 
     #   Initialise LEDs
     red_LED = DigitalOutput()
@@ -432,6 +434,11 @@ def main():
     setup_light(light_seated, state)
     setup_rfid_phone(rfid_phone)
     setup_gyroscopes(state)
+
+    # Initial LCD display with default or prompted values
+    message = "WORK  SHORTB  LONGB"  
+    detail = f'{state["timer_states"]["work"]:02d}     {state["timer_states"]["sbreak"]:02d}     {state["timer_states"]["lbreak"]:02d}'
+    write_lcd(state["lcd"], message, detail)
 
     try:
         input("Press Enter to Stop\n")
