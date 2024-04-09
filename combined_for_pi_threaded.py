@@ -29,11 +29,20 @@ def control_leds(state):
     state["blue_LED"].setState(False)
 
     if state["is_paused"]:
-        state["blue_LED"].setState(True)
+        while True:
+            if userReady():
+                state["green_LED"].setState(True)
+                time.sleep(0.2)
+                state["green_LED"].setState(False)
+                time.sleep(0.2)
+                state["green_LED"].setState(True)
+                time.sleep(0.2)
+                state["green_LED"].setState(False)
+                time.sleep(2)
     elif state["current_phase"] == "work":
-        state["red_LED"].setState(True)
-    else:  # "sbreak" or "lbreak"
         state["green_LED"].setState(True)
+    else:  # "sbreak" or "lbreak"
+        state["blue_LED"].setState(True)
 
 def controlServo(state):
     # moving the servo 180 degrees to open or close
@@ -53,6 +62,17 @@ def userReady():
     # check if the user is seated, gyros okay, and phone present
     return bool(dict.get("light_seated")=="True") and bool(dict.get("phone_rfid")=="True") and bool(dict.get("posture_l")=="True") and bool(dict.get("posture_r")=="True")
     
+def monitorUserReady(state):
+    while True:
+        if not userReady():
+            state["red_LED"].setState(True)
+            time.sleep(0.2)
+            state["red_LED"].setState(False)
+            time.sleep(0.2)
+            state["red_LED"].setState(True)
+            time.sleep(0.2)
+            state["red_LED"].setState(False)
+        time.sleep(2)
 
 def onLbreakTimerChange(self, voltage):
     # print(f'lbreak: {voltage:.2f}')
@@ -265,7 +285,7 @@ def run_pomodoro(state):
 def countdown(state, phase):
     limit = state["timer_states"][phase] * 6  # Convert minutes to seconds
     state["end_time"] = time.time() + limit
-    while time.time() < state["end_time"]:
+    while (time.time() < state["end_time"]):
         if not state["is_running"]:
             return
         if state["is_paused"]:
@@ -434,6 +454,8 @@ def main():
     setup_light(light_seated, state)
     setup_rfid_phone(rfid_phone)
     setup_gyroscopes(state)
+    monitorUserReadyThread = Thread(target=monitorUserReady, args=(state,),daemon=True)
+    monitorUserReadyThread.start()
 
     # Initial LCD display with default or prompted values
     message = "WORK  SHORTB  LONGB"  
