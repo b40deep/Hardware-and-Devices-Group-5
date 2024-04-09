@@ -29,10 +29,11 @@ def buzzer_Output(buzzerEvent, digitalOutput):
 
 def main():
 	#Enable server discovery to allow your program to find other Phidgets on the local network.
-	# Net.enableServerDiscovery(PhidgetServerType.PHIDGETSERVER_DEVICEREMOTE)
+	Net.enableServerDiscovery(PhidgetServerType.PHIDGETSERVER_DEVICEREMOTE)
 
 	#Add a specific remote server to communicate with Phidget remotely
 	# Net.addServer("", "192.168.42.188", 5661, "", 0)
+	Net.addServer("raspberrypi.local", "192.168.137.254", 5661, "", 0)
 
 	#Create your Phidget channels
 	voltageInput7 = VoltageInput()
@@ -44,13 +45,13 @@ def main():
 	#Set addressing parameters to specify which channel to open (if any)
 	#voltageInput7.setIsRemote(True)
 	voltageInput7.setDeviceSerialNumber(39834)
-	voltageInput7.setChannel(7)
+	voltageInput7.setChannel(3)
 	#digitalOutput0.setIsRemote(True)
 	digitalOutput0.setDeviceSerialNumber(39834)
-	digitalOutput0.setChannel(0)
+	digitalOutput0.setChannel(7)
 	#digitalOutput7.setIsRemote(True)
 	digitalOutput7.setDeviceSerialNumber(39834)
-	digitalOutput7.setChannel(7)
+	digitalOutput7.setChannel(2)
 
 	#Here we create an attribute of input called "linkedOutput", and assign it the handle for output
 	voltageInput7.linkedDigitalOutput7 = digitalOutput7
