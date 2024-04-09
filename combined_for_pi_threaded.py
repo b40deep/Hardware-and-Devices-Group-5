@@ -44,8 +44,8 @@ def control_leds(state):
     else:  # "sbreak" or "lbreak"
         state["blue_LED"].setState(True)
 
-def controlServo(state):
     # moving the servo 180 degrees to open or close
+def controlServo(state):
     if(state['work_timer'].linkedServo.getAttached()):
         position = state['work_timer'].linkedServo.getTargetPosition()
         # temp=position
@@ -53,15 +53,17 @@ def controlServo(state):
         # print(f'################################################{temp}\t{position}')
         state['work_timer'].linkedServo.setTargetPosition(position)
 
-def controlBuzzer(state):
     # make the buzzer go off
+def controlBuzzer(state):
     if(not state['work_timer'].linkedEvent.is_set()):
             state['work_timer'].linkedEvent.set()
 
-def userReady():
     # check if the user is seated, gyros okay, and phone present
+def userReady():
     return bool(dict.get("light_seated")=="True") and bool(dict.get("phone_rfid")=="True") and bool(dict.get("posture_l")=="True") and bool(dict.get("posture_r")=="True")
     
+    # runs on separate thread. always checks if user is seated, gyros okay, and phone present
+    # if these conditions not met, it will alert via RED LED blinking.
 def monitorUserReady(state):
     while True:
         if not userReady():
@@ -74,26 +76,12 @@ def monitorUserReady(state):
             state["red_LED"].setState(False)
         time.sleep(2)
 
-def onLbreakTimerChange(self, voltage):
-    # print(f'lbreak: {voltage:.2f}')
-    dict.update("lbreak", str(voltage))
-
-def onSbreakTimerChange(self, voltage):
-    # print(f'sbreak: {voltage:.2f}')
-    dict.update("sbreak", str(voltage))
-    # if(not self.linkedEvent.is_set()):
-    #     self.linkedEvent.set()
-
-def onWorkTimerChange(self, voltage):
-    # print(f'work: {voltage:.2f}')
-    dict.update("work", str(voltage))
-    # if(self.linkedServo.getAttached()):
-    #     self.linkedServo.setTargetPosition(10 + voltage*30)
-
+    # saves servo position to dict for when we next need to move the servo.
 def onServoPositionChange(self, position):
     # print(f'servo_pos: {position:.2f}')
     dict.update("servo_pos", str(position))
 
+    # used as the button to start stop pause etc for the timers
 def onTouchSensorChange(self, sensorValue, sensorUnit, state):
     if sensorValue>0:
         # curr = time.time()
@@ -107,6 +95,7 @@ def onTouchSensorChange(self, sensorValue, sensorUnit, state):
             printr('touch_sensor')
             togglePomodoro(state)
 
+    # one of the conditions is user must be seated then light sensor will report TRUE
 def onLightSensorChange(self, sensorValue, sensorUnit, state):
     # if sensorValue < 100: # state['light_trigger']
     if sensorValue < state['light_trigger']: # state['light_trigger']
@@ -116,6 +105,7 @@ def onLightSensorChange(self, sensorValue, sensorUnit, state):
         # print(f'light_seated: {sensorValue}')
         dict.update("light_seated", str(False))
 
+    # one of the conditions is user phone RFID must be present at all times
 def onRFIDTag(self, tag, protocol):
     if tag == '01069345ef': #phone rfid
         # print(f'phone_rfid: {True}')
@@ -124,11 +114,13 @@ def onRFIDTag(self, tag, protocol):
         # print(f'friend_rfid: {True}')
         dict.update("friend_rfid", str(True))
     
+    # one of the conditions is user phone RFID must be present at all times
 def onRFIDTagLost(self, tag, protocol):
     if tag == '01069345ef': #phone rfid
         # print(f'phone_rfid: {False}')
         dict.update("phone_rfid", str(False))
 
+    # one of the conditions is user gyros must show he's seated upright at all times
 def onGyroSensorChange(self, acceleration, angularRate, magneticField, timestamp, state):
     if str(self) == 'Spatial Ch:0 -> MOT1101 -> HUB0000 Port:3 S/N:626713':
         prev = float(state['gyro_prev_l'])
@@ -156,8 +148,8 @@ def onGyroSensorChange(self, acceleration, angularRate, magneticField, timestamp
         dict.update("posture_r",str(posture))
         # print(f'posture_r: {posture}')
         
-        
 
+    # set off the buzzer by making it tick on and off
 def buzzer_Output(buzzerEvent, buzzer):
 	while buzzerEvent.wait():
 		for i in range(10):
@@ -172,6 +164,7 @@ def buzzer_Output(buzzerEvent, buzzer):
 			time.sleep(1/3000)
 		buzzerEvent.clear()
 
+    # only for debug, remova all calls before live testing.
 def printr(key):
     # print('dict update')
     # if key == "touch_sensor"or "light_seated"or "phone_rfid"or "friend_rfid"or "posture_l"or "posture_r":
@@ -191,13 +184,12 @@ def write_lcd(lcd, message, detail):
     lcd.writeText(LCDFont.FONT_5x8, 0, 1, detail)
     lcd.flush()
 
-def setup_gyroscopes(state):
-    gyroR = Spatial()
+# setup method
+def setup_gyroscopes(state,gyroR,gyroL):
     gyroR.setHubPort(2)
     gyroR.setDeviceSerialNumber(626713)
     gyroR.setOnSpatialDataHandler(lambda self, acceleration, angularRate, magneticField, timestamp: onGyroSensorChange(self, acceleration, angularRate, magneticField, timestamp, state))
     gyroR.openWaitForAttachment(5000)
-    gyroL = Spatial()
     gyroL.setHubPort(3)
     gyroL.setDeviceSerialNumber(626713)
     gyroL.setOnSpatialDataHandler(lambda self, acceleration, angularRate, magneticField, timestamp: onGyroSensorChange(self, acceleration, angularRate, magneticField, timestamp, state))
@@ -222,6 +214,8 @@ def create_timer_sensor_change_handler(lcd, state, time_block_type):
         print(f"New {time_block_type} value: {new_value}")  # Debugging line to see the calculated new value
         # Update state
         state['timer_states'][time_block_type] = new_value
+                # Update dict
+        dict.set(time_block_type,str(new_value))
         # Immediately update the LCD with new times
         message = "WORK  SHORTB  LONGB"
         detail = f"{state['timer_states']['work']:02d}     {state['timer_states']['sbreak']:02d}     {state['timer_states']['lbreak']:02d}"
@@ -241,6 +235,7 @@ def setup_timer(timer, lcd, state, device_serial_number, channel, time_block_typ
     timer.setSensorType(VoltageRatioSensorType.SENSOR_TYPE_1109)
     return timer
 
+# switch timer states based on button press
 def togglePomodoro(state):
     # while bool(dict.get("light_seated")=="True") and bool(dict.get("phone_rfid")=="True") and bool(dict.get("posture_l")=="True") and bool(dict.get("posture_r")=="True"):
     # if preconditions are not met, timer button has to be pressed to start / resume
@@ -282,8 +277,11 @@ def run_pomodoro(state):
     control_leds(state) # Also control LEDs when the pomodoro cycle completes
     write_lcd(state["lcd"], "Pomodoro Complete", "")
 
+# do the actual counting down
 def countdown(state, phase):
     limit = state["timer_states"][phase] * 6  # Convert minutes to seconds
+    #     # Update dict
+    # dict.set(phase,str(limit))
     state["end_time"] = time.time() + limit
     while (time.time() < state["end_time"]):
         if not state["is_running"]:
@@ -305,6 +303,7 @@ def countdown(state, phase):
     if (phase == "sbreak" or phase == "lbreak") and dict.get("phone_rfid") == "True" :
         controlServo(state) #   Close the phone holder for work times
 
+# setup method
 def setup_touch(touch_sensor, LCD_SERIAL_NUM, state):
     touch_sensor.setDeviceSerialNumber(LCD_SERIAL_NUM)
     touch_sensor.setChannel(5)
@@ -313,6 +312,7 @@ def setup_touch(touch_sensor, LCD_SERIAL_NUM, state):
     touch_sensor.openWaitForAttachment(5000)
     touch_sensor.setSensorType(VoltageRatioSensorType.SENSOR_TYPE_1110)
 
+# setup method
 def setup_servo(desk_servo, SERVO_SERIAL_NUM):
     desk_servo.setDeviceSerialNumber(SERVO_SERIAL_NUM)
     desk_servo.setIsRemote(1)
@@ -321,6 +321,7 @@ def setup_servo(desk_servo, SERVO_SERIAL_NUM):
     desk_servo.setTargetPosition(0)
     desk_servo.setEngaged(True) 
 
+# setup method
 def setup_buzzer(buzzer, buzzerOutput, LCD_SERIAL_NUM):
     buzzer.setDeviceSerialNumber(LCD_SERIAL_NUM)
     buzzer.setChannel(7)
@@ -328,23 +329,25 @@ def setup_buzzer(buzzer, buzzerOutput, LCD_SERIAL_NUM):
     buzzerOutput.start() # Start thread after opening channels
     buzzer.setDutyCycle(0)
 
+# setup method
 def setup_light(light_seated, state):
     light_seated.setHubPort(0)
     light_seated.setOnSensorChangeHandler(lambda self, sensorValue, sensorUnit:onLightSensorChange(self, sensorValue, sensorUnit, state))
     light_seated.openWaitForAttachment(5000)
     light_seated.setSensorType(VoltageSensorType.SENSOR_TYPE_1142)
 
+# setup method
 def setup_rfid_phone(rfid_phone):
     rfid_phone.setOnTagHandler(onRFIDTag)
     rfid_phone.setOnTagLostHandler(onRFIDTagLost)
     rfid_phone.openWaitForAttachment(5000)
 
+# main method
 def main():
 
     #Enable server discovery to list remote phidgets
     Net.enableServerDiscovery(PhidgetServerType.PHIDGETSERVER_DEVICEREMOTE) 
     #Add a specific remote server to communicate with Phidget remotely
-    # Net.addServer("raspberrypi.local", "137.44.181.148", 5661, "", 0)
     Net.addServer("raspberrypi.local", "192.168.137.254", 5661, "", 0)
 
     #   setup some variables
@@ -365,6 +368,8 @@ def main():
     light_seated.setIsHubPortDevice(True)
     rfid_phone = RFID()
     rfid_phone.setDeviceSerialNumber(RFID_SERIAL_NUM)
+    gyroR = Spatial()
+    gyroL = Spatial()
 
     #Set addressing parameters to specify which channel to open (if any)
     lcd.setDeviceSerialNumber(LCD_SERIAL_NUM) 
@@ -405,32 +410,32 @@ def main():
 
         "work_timer": work_timer,
 
-        "light_trigger" : 100,
-        "touch_prev_time"   : 0,
+        "light_trigger" : 100,  #   light value below which user is reported as seated
+        # "touch_prev_time"   : 0,  # not used
         "posture_l" : False,    #   not currently used, already in dict
         "posture_r" : False,    #   not currently used, already in dict
-        "gyro_prev_l" : 0,
-        "gyro_curr_l" : 0,
-        "gyro_delta_l" : 0,
-        "gyro_prev_r" : 0,
-        "gyro_curr_r" : 0,
-        "gyro_delta_r" : 0,
-        "gyro_trigger" : 0.05
+        "gyro_prev_l" : 0,      #   gyro value for previous reading
+        "gyro_curr_l" : 0,      #   gyro value for current reading
+        "gyro_delta_l" : 0,     #   gyro value for difference btn prev and curr
+        "gyro_prev_r" : 0,      #   gyro value for previous reading
+        "gyro_curr_r" : 0,      #   gyro value for current reading
+        "gyro_delta_r" : 0,     #   gyro value for difference btn prev and curr
+        "gyro_trigger" : 0.05   #   gyro value beyond which we report poor posture
     }
 
 
     dict.setIsRemote(1)
     dict.openWaitForAttachment(4000)
-    dict.set("servo_pos", "0")
-    dict.set("lbreak", "0")
-    dict.set("sbreak", "0")
-    dict.set("work", "0")
-    dict.set("touch_sensor", "0")
-    dict.set("light_seated", "False")
-    dict.set("phone_rfid", "False")
-    dict.set("friend_rfid", "False")
-    dict.set("posture_l", "False")
-    dict.set("posture_r", "False")
+    dict.set("servo_pos", "0")  #   servo position 0 or 180
+    dict.set("lbreak", "0") #   times that were set by the user
+    dict.set("sbreak", "0") #   times that were set by the user
+    dict.set("work", "0")   #   times that were set by the user
+    dict.set("touch_sensor", "0")   #   0 is not pressed, 1 is pressed
+    dict.set("light_seated", "False")   #   True if user seated 
+    dict.set("phone_rfid", "False")     #   rfid for if phone detected
+    dict.set("friend_rfid", "False")    #   rfid for if friend detected
+    dict.set("posture_l", "False")  #   gyro value for if left posture is good
+    dict.set("posture_r", "False")  #   gyro value for if right posture is good
 
 
     # Setup timers for work, short break, and long break with initial times
@@ -453,7 +458,7 @@ def main():
     setup_buzzer(buzzer, buzzerOutput, LCD_SERIAL_NUM)
     setup_light(light_seated, state)
     setup_rfid_phone(rfid_phone)
-    setup_gyroscopes(state)
+    setup_gyroscopes(state,gyroR,gyroL)
     monitorUserReadyThread = Thread(target=monitorUserReady, args=(state,),daemon=True)
     monitorUserReadyThread.start()
 
