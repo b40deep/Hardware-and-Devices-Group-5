@@ -82,9 +82,9 @@ def onTouchSensorChange(self, sensorValue, sensorUnit, state):
         if sensorValue>0:
             togglePomodoro(state)
 
-def onLightSensorChange(self, sensorValue, sensorUnit):
+def onLightSensorChange(self, sensorValue, sensorUnit, state):
     # if sensorValue < 100: # state['light_trigger']
-    if sensorValue < int(dict.get('light_trigger')): # state['light_trigger']
+    if sensorValue < state['light_trigger']: # state['light_trigger']
         # print(f'light_seated: {sensorValue}')
         dict.update("light_seated", str(True))
     else:
@@ -106,30 +106,31 @@ def onRFIDTagLost(self, tag, protocol):
 
 def onGyroSensorChange(self, acceleration, angularRate, magneticField, timestamp, state):
     if str(self) == 'Spatial Ch:0 -> MOT1101 -> HUB0000 Port:3 S/N:626713':
-        prev = float(dict.get('gyro_prev_l'))
+        prev = float(state['gyro_prev_l'])
         curr = abs(round(acceleration[1],2))
         delta = curr - prev
-        trigger = float(dict.get('gyro_trigger'))
+        trigger = float(state['gyro_trigger'])
         posture = None
-        if prev == 0: dict.update('gyro_prev_l', str(curr)) 
-        dict.update('gyro_curr_l', str(curr))
-        dict.update('gyro_delta_l', str(curr - prev))
+        if prev == 0: state['gyro_prev_l'] = (curr) 
+        state['gyro_curr_l'] = (curr)
+        state['gyro_delta_l'] = (curr- prev)
         posture = False if delta > trigger else True
-        dict.update("posture_l", str(posture))
+        dict.update("posture_l",str(posture))
         # print(f'posture_l: {posture}')
 
     elif str(self) == 'Spatial Ch:0 -> MOT1101 -> HUB0000 Port:2 S/N:626713':
-        prev = float(dict.get('gyro_prev_r'))
+        prev = float(state['gyro_prev_r'])
         curr = abs(round(acceleration[1],2))
         delta = curr - prev
-        trigger = float(dict.get('gyro_trigger'))
+        trigger = float(state['gyro_trigger'])
         posture = None
-        if prev == 0: dict.update('gyro_prev_r', str(curr)) 
-        dict.update('gyro_curr_r', str(curr))
-        dict.update('gyro_delta_r', str(curr - prev))
+        if prev == 0: state['gyro_prev_r'] = (curr) 
+        state['gyro_curr_r'] = (curr)
+        state['gyro_delta_r'] = (curr- prev)
         posture = False if delta > trigger else True
-        dict.update("posture_r", str(posture))
+        dict.update("posture_r",str(posture))
         # print(f'posture_r: {posture}')
+        
         
 
 def buzzer_Output(buzzerEvent, buzzer):
@@ -302,9 +303,9 @@ def setup_buzzer(buzzer, buzzerOutput, LCD_SERIAL_NUM):
     buzzerOutput.start() # Start thread after opening channels
     buzzer.setDutyCycle(0)
 
-def setup_light(light_seated):
+def setup_light(light_seated, state):
     light_seated.setHubPort(0)
-    light_seated.setOnSensorChangeHandler(onLightSensorChange)
+    light_seated.setOnSensorChangeHandler(lambda self, sensorValue, sensorUnit:onLightSensorChange(self, sensorValue, sensorUnit, state))
     light_seated.openWaitForAttachment(5000)
     light_seated.setSensorType(VoltageSensorType.SENSOR_TYPE_1142)
 
@@ -376,6 +377,17 @@ def main():
         "blue_LED": blue_LED,
 
         "work_timer": work_timer,
+
+        "light_trigger" : 100,
+        "posture_l" : False,    #   not currently used, already in dict
+        "posture_r" : False,    #   not currently used, already in dict
+        "gyro_prev_l" : 0,
+        "gyro_curr_l" : 0,
+        "gyro_delta_l" : 0,
+        "gyro_prev_r" : 0,
+        "gyro_curr_r" : 0,
+        "gyro_delta_r" : 0,
+        "gyro_trigger" : 0.05
     }
 
 
@@ -387,18 +399,10 @@ def main():
     dict.set("work", "0")
     dict.set("touch_sensor", "0")
     dict.set("light_seated", "False")
-    dict.set("light_trigger", "100")    # don't think needed in live dictionary
     dict.set("phone_rfid", "False")
     dict.set("friend_rfid", "False")
-    dict.set("gyro_prev_l", "0")    # don't think needed in live dictionary
-    dict.set("gyro_curr_l", "0")    # don't think needed in live dictionary
-    dict.set("gyro_delta_l", "0")   # don't think needed in live dictionary
     dict.set("posture_l", "False")
-    dict.set("gyro_prev_r", "0")    # don't think needed in live dictionary
-    dict.set("gyro_curr_r", "0")    # don't think needed in live dictionary
-    dict.set("gyro_delta_r", "0")   # don't think needed in live dictionary
     dict.set("posture_r", "False")
-    dict.set("gyro_trigger", "0")   # don't think needed in live dictionary
 
 
     	# Setup timers for work, short break, and long break with initial times
@@ -419,7 +423,7 @@ def main():
     buzzerOutput = Thread(target=buzzer_Output, args=(buzzerEvent, buzzer),daemon=True)
     work_timer.linkedEvent = buzzerEvent # link buzzer to something for it to work
     setup_buzzer(buzzer, buzzerOutput, LCD_SERIAL_NUM)
-    setup_light(light_seated)
+    setup_light(light_seated, state)
     setup_rfid_phone(rfid_phone)
     setup_gyroscopes(state)
 
