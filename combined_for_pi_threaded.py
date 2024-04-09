@@ -358,17 +358,6 @@ def main():
         led.setDeviceSerialNumber(LCD_SERIAL_NUM)  # Assuming LEDs are connected to the same interface
         led.setChannel(channel)
         led.openWaitForAttachment(5000)
-    
-    time.sleep(0.5)  # Wait for 1 second
-    red_LED.setState(True)
-    time.sleep(0.5)  # Wait for 1 second
-    red_LED.setState(False)
-    green_LED.setState(True)
-    time.sleep(0.5)  # Wait for 1 second
-    green_LED.setState(False)
-    blue_LED.setState(True)
-    time.sleep(0.5)  # Wait for 1 second
-    blue_LED.setState(False)
 
     # dictionary to handle State management
     state= {
