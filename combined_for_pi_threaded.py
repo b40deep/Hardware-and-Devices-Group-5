@@ -29,16 +29,7 @@ def control_leds(state):
     state["blue_LED"].setState(False)
 
     if state["is_paused"]:
-        while True:
-            if userReady():
-                state["green_LED"].setState(True)
-                time.sleep(0.2)
-                state["green_LED"].setState(False)
-                time.sleep(0.2)
-                state["green_LED"].setState(True)
-                time.sleep(0.2)
-                state["green_LED"].setState(False)
-                time.sleep(2)
+        state["red_LED"].setState(True)
     elif state["current_phase"] == "work":
         state["green_LED"].setState(True)
     else:  # "sbreak" or "lbreak"
@@ -66,7 +57,10 @@ def userReady():
     # if these conditions not met, it will alert via RED LED blinking.
 def monitorUserReady(state):
     while True:
-        if not userReady():
+        if not userReady() and (state["current_phase"] == "work" or state["current_phase"] == "startup"):
+            #   can replace / compliment this with buzzer if the LED effect is not sufficient.
+            controlBuzzer(state)
+
             state["red_LED"].setState(True)
             time.sleep(0.2)
             state["red_LED"].setState(False)
@@ -75,6 +69,7 @@ def monitorUserReady(state):
             time.sleep(0.2)
             state["red_LED"].setState(False)
         time.sleep(2)
+    
 
     # saves servo position to dict for when we next need to move the servo.
 def onServoPositionChange(self, position):
@@ -83,6 +78,7 @@ def onServoPositionChange(self, position):
 
     # used as the button to start stop pause etc for the timers
 def onTouchSensorChange(self, sensorValue, sensorUnit, state):
+
     if sensorValue>0:
         # curr = time.time()
         # print(curr- state["touch_prev_time"])
@@ -94,6 +90,9 @@ def onTouchSensorChange(self, sensorValue, sensorUnit, state):
             dict.update("touch_sensor", str(sensorValue))
             printr('touch_sensor')
             togglePomodoro(state)
+        else:
+            #   user not ready so program won't start.
+            None
 
     # one of the conditions is user must be seated then light sensor will report TRUE
 def onLightSensorChange(self, sensorValue, sensorUnit, state):
@@ -208,9 +207,9 @@ def create_timer_sensor_change_handler(lcd, state, time_block_type):
     def on_timer_sensor_change(sensor, sensor_value, sensor_unit):
         print(f"Sensor Value Changed: {sensor_value} for {time_block_type}")   # Debugging line
         # Update time based on sensor input
-        new_value = math.ceil(60 * sensor_value) if time_block_type == "work" else \
-                    math.ceil(30 * sensor_value) if time_block_type == "sbreak" else \
-                    math.ceil(90 * sensor_value)
+        new_value = math.ceil(60 * abs(1-sensor_value)) if time_block_type == "work" else \
+                    math.ceil(30 * abs(1-sensor_value)) if time_block_type == "sbreak" else \
+                    math.ceil(90 * abs(1-sensor_value))
         print(f"New {time_block_type} value: {new_value}")  # Debugging line to see the calculated new value
         # Update state
         state['timer_states'][time_block_type] = new_value
@@ -377,7 +376,7 @@ def main():
     lcd.openWaitForAttachment(4000) 
     lcd.setBacklight(1)
     # Display "Pomodoro Timer" and "Ready" for 3 seconds  
-    write_lcd(lcd, "Pomodoro Timer", "Ready")
+    write_lcd(lcd, "Pomodoro Pal", "Loading, please wait")
     # time.sleep(1)  # Wait for 3 seconds
 
 
@@ -401,7 +400,7 @@ def main():
         "pause_time": 0, # Placeholder for the time the pause button was pressed 
         "end_time": 0, # Placeholder for the end time of the current phase
         "timer_states": {"work": 1, "sbreak": 1, "lbreak": 1}, # Example default values
-        "current_phase": None, # Placeholder for the current phase of the pomodoro cycle
+        "current_phase": "startup", # Placeholder for the current phase of the pomodoro cycle
         "last_toggle": 0, # Placeholder for the last time the touch sensor was toggled
         "lcd": lcd, # Placeholder for the LCD object
         "red_LED": red_LED,
@@ -436,6 +435,7 @@ def main():
     dict.set("friend_rfid", "False")    #   rfid for if friend detected
     dict.set("posture_l", "False")  #   gyro value for if left posture is good
     dict.set("posture_r", "False")  #   gyro value for if right posture is good
+    dict.set("user_ready", "False")  #   user ready value updated by monitoring thread
 
 
     # Setup timers for work, short break, and long break with initial times
@@ -459,6 +459,8 @@ def main():
     setup_light(light_seated, state)
     setup_rfid_phone(rfid_phone)
     setup_gyroscopes(state,gyroR,gyroL)
+
+    time.sleep(1)
     monitorUserReadyThread = Thread(target=monitorUserReady, args=(state,),daemon=True)
     monitorUserReadyThread.start()
 
