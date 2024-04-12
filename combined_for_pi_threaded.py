@@ -300,7 +300,7 @@ def countdown(state, phase):
     if phase == "work":
         controlBuzzer(state) # Buzz when it's break time.
         controlServo(state) #   Open the phone holder for break times
-    if (phase == "sbreak" or phase == "lbreak") and dict.get("phone_rfid") == "True" :
+    if (phase == "sbreak") and dict.get("phone_rfid") == "True" :
         controlServo(state) #   Close the phone holder for work times
 
 # setup method
